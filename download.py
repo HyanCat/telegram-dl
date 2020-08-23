@@ -1,7 +1,7 @@
 from telethon import TelegramClient, sync
 import os
 # import socks #如果你不需要通过代理连接Telegram，可以删掉这一行
-from telethon.tl.types import InputMessagesFilterPhotos
+from telethon.tl.types import InputMessagesFilterPhotos, InputMessagesFilterVideo
 import json
 
 # 读取 config
@@ -20,34 +20,39 @@ api_hash = config['api_hash']
 # proxy =(socks.SOCKS5,"0.0.0.0",1080) #不需要代理的话删掉该行
 
 
-def download(channel):
+def download(channel, filter):
     channel_link = "https://t.me/"+channel
     picture_storage_path = "data/"+channel
     # ==========================================
 
-    photos = client.get_messages(
-        channel_link, None, max_id=100000, min_id=0, filter=InputMessagesFilterPhotos)
+    medias = client.get_messages(
+        channel_link, None, max_id=100000, min_id=0, filter=filter)
 
-    total = len(photos)
+    total = len(medias)
     index = 0
-    for photo in photos:
-        ext = photo.file.ext
+    for item in medias:
+        ext = item.file.ext
         filename = picture_storage_path + "/" + \
-            channel + "_" + str(photo.id) + ext
+            channel + "_" + str(item.id) + ext
         index = index + 1
         print("downloading:", index, "/", total, " : ", filename)
         if os.path.exists(filename) == False:
-            client.download_media(photo, filename)
+            client.download_media(item, filename)
             print('done!')
         else:
             print('exist!')
 
 
-client = TelegramClient('my_session', api_id=api_id,
-                        api_hash=api_hash).start()
-for channel in config['channels']:
+client = TelegramClient('my_session', api_id=api_id, api_hash=api_hash).start()
+channels = config['channels']
+for channel in channels.keys():
     print('Start downloading channel: ', channel)
-    download(channel)
+    types = channels[channel]
+    for type in types:
+        if type == "photo":
+            download(channel, InputMessagesFilterPhotos)
+        elif type == "video":
+            download(channel, InputMessagesFilterVideo)
     print('Finish downloading channel: ', channel)
 
 client.disconnect()
